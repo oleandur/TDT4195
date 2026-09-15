@@ -3,11 +3,13 @@
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec4 vertexColor;
 
+layout(location = 0) uniform mat4 transformation;
+
 out vec4 color;
 
 void main()
 {
-    mat4 transformation = mat4(1.0);
+    // mat4 transformation = mat4(1.0);
 
     // transformation[0][0] = 1.2; // a
     // transformation[1][0] = 0.4; // b

@@ -327,6 +327,16 @@ fn main() {
 
         // Used to demonstrate keyboard handling for exercise 2.
         let mut _arbitrary_number = 0.0; // feel free to remove
+        
+        let mut camera_x: f32 = 0.0;
+        let mut camera_y: f32 = 0.0;
+        let mut camera_z: f32 = 3.0;
+
+        let mut camera_yaw: f32 = 0.0;
+        let mut camera_pitch: f32 = 0.0;
+
+        let movement_speed: f32 = 2.0;
+        let rotation_speed: f32 = 1.5;
 
 
         // The main rendering loop
@@ -358,10 +368,34 @@ fn main() {
                         //    https://docs.rs/winit/0.25.0/winit/event/enum.VirtualKeyCode.html
 
                         VirtualKeyCode::A => {
-                            _arbitrary_number += delta_time;
+                            camera_x -= movement_speed * delta_time;
                         }
                         VirtualKeyCode::D => {
-                            _arbitrary_number -= delta_time;
+                            camera_x += movement_speed * delta_time;
+                        }
+                        VirtualKeyCode::W => {
+                            camera_z -= movement_speed * delta_time;
+                        }
+                        VirtualKeyCode::S => {
+                            camera_z += movement_speed * delta_time;
+                        }
+                        VirtualKeyCode::Space => {
+                            camera_y += movement_speed * delta_time;
+                        }
+                        VirtualKeyCode::LShift => {
+                            camera_y -= movement_speed * delta_time;
+                        }
+                        VirtualKeyCode::Left => {
+                            camera_yaw += rotation_speed * delta_time;
+                        }
+                        VirtualKeyCode::Right => {
+                            camera_yaw -= rotation_speed * delta_time;
+                        }
+                        VirtualKeyCode::Up => {
+                            camera_pitch += rotation_speed * delta_time;
+                        }
+                        VirtualKeyCode::Down => {
+                            camera_pitch -= rotation_speed * delta_time;
                         }
 
 
@@ -381,6 +415,15 @@ fn main() {
 
             // == // Please compute camera transforms here (exercise 2 & 3)
 
+            let camera_translation: glm::Mat4 = glm::translation(&glm::vec3(-camera_x, -camera_y, -camera_z));
+
+            let yaw_rotation: glm::Mat4 = glm::rotation(-camera_yaw, &glm::vec3(0.0, 1.0, 0.0));
+
+            let pitch_rotation: glm::Mat4 = glm::rotation(-camera_pitch, &glm::vec3(1.0, 0.0, 0.0));
+
+            let projection: glm::Mat4 = glm::perspective(window_aspect_ratio, 45.0_f32.to_radians(), 1.0, 100.0);
+
+            let transformation: glm::Mat4 = projection * pitch_rotation *yaw_rotation * camera_translation;
 
             unsafe {
                 // Clear the color and depth buffers
@@ -390,6 +433,9 @@ fn main() {
 
                 // == // Issue the necessary gl:: commands to draw your scene here
                 simple_shader.activate();
+
+                gl::UniformMatrix4fv(0, 1, gl::FALSE, transformation.as_ptr());
+
                 gl::BindVertexArray(my_vao);
 
                 gl::DrawElements(gl::TRIANGLES, index_count, gl::UNSIGNED_INT, ptr::null(), );
