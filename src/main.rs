@@ -53,21 +53,51 @@ fn offset<T>(n: u32) -> *const c_void {
 
 
 // == // Generate your VAO here
-unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>) -> u32 {
+unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, color: &Vec<f32>) -> u32 {
     // Implement me!
 
     // Also, feel free to delete comments :)
 
     // This should:
     // * Generate a VAO and bind it
-    // * Generate a VBO and bind it
-    // * Fill it with data
-    // * Configure a VAP for the data and enable it
-    // * Generate a IBO and bind it
-    // * Fill it with data
-    // * Return the ID of the VAO
+    let mut vao_id: u32 = 0;
+    gl::GenVertexArrays(1, &mut vao_id);
+    gl::BindVertexArray(vao_id);
 
-    0
+    // * Generate a VBO and bind it
+    let mut vbo_id: u32 = 0;
+    gl::GenBuffers(1, &mut vbo_id);
+    gl::BindBuffer(gl::ARRAY_BUFFER, vbo_id);
+
+    // * Fill it with data
+    gl::BufferData(gl::ARRAY_BUFFER, byte_size_of_array(vertices), pointer_to_array(vertices), gl::STATIC_DRAW);
+
+    // * Configure a VAP for the data and enable it
+    gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, 0, ptr::null());
+
+    gl::EnableVertexAttribArray(0);
+
+    let mut color_vbo_id: u32 = 0;
+    gl::GenBuffers(1, &mut color_vbo_id);
+    gl::BindBuffer(gl::ARRAY_BUFFER, color_vbo_id);
+
+    gl::BufferData(gl::ARRAY_BUFFER, byte_size_of_array(color), pointer_to_array(color), gl::STATIC_DRAW);
+
+    gl::VertexAttribPointer(1, 4, gl::FLOAT, gl::FALSE, 0, ptr::null());
+
+    gl::EnableVertexAttribArray(1);
+
+
+    // * Generate a IBO and bind it
+    let mut ibo_id: u32 = 0;
+    gl::GenBuffers(1, &mut ibo_id);
+    gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, ibo_id);
+
+    // * Fill it with data
+    gl::BufferData(gl::ELEMENT_ARRAY_BUFFER, byte_size_of_array(indices), pointer_to_array(indices), gl::STATIC_DRAW);
+
+    // * Return the ID of the VAO
+    vao_id
 }
 
 
@@ -132,7 +162,141 @@ fn main() {
 
         // == // Set up your VAO around here
 
-        let my_vao = unsafe { 1337 };
+        // 5 triangles
+        let vertices: Vec<f32> = vec![
+            // Triangle 1
+            -0.90, 0.10, 0.0,
+            -0.55, 0.10, 0.0,
+            -0.725, 0.60, 0.0,
+
+            // Triangle 2
+            0.55, 0.10, 0.0,
+            0.90, 0.10, 0.0,
+            0.725, 0.60, 0.0,
+
+            // Triangle 3
+            -0.725, -0.75, 0.0,
+            -0.55, -0.25, 0.0,
+            -0.90, -0.25, 0.0,
+            
+
+            // Triangle 4
+            0.0, -0.75, 0.0,
+            0.175, -0.25, 0.0,
+            -0.175, -0.25, 0.0,
+            
+
+            // Triangle 5
+            0.725, -0.75, 0.0,
+            0.90, -0.25, 0.0,
+            0.55, -0.25, 0.0,
+            
+        ];
+        let indices: Vec<u32> = vec![
+            0, 1, 2, 
+            3, 4, 5,
+            6, 7, 8,
+            9, 10, 11,
+            12, 13, 14,
+        ];
+
+        let colors: Vec<f32> = vec![
+            // r,  g,   b,   a
+            1.0, 0.0, 0.0, 1.0, // vertex 0 = rød
+            0.0, 1.0, 0.0, 1.0, // vertex 1 = grønn
+            0.0, 0.0, 1.0, 1.0, // vertex 2 = blå
+        ];
+        
+        // Checkerboard
+        /* let vertices: Vec<f32> = vec![
+            5.0, -5.0, -5.0,
+            0.0, 5.0, 0.0,
+            -5.0, -5.0, 5.0,
+        ]; 
+
+        let indices: Vec<u32> = vec![
+            0, 1, 2
+        ];
+         */
+         
+        // Circle
+        /* let segments: u32 = 64;
+        let radius: f32 = 0.6;
+
+        let radius_x = radius / window_aspect_ratio;
+        let radius_y = radius;
+
+        let mut vertices: Vec<f32> = Vec::new();
+        let mut indices: Vec<u32> = Vec::new();
+        
+        
+        // Center vertex
+        vertices.extend_from_slice(&[
+            0.0, 0.0, 0.0
+        ]);
+
+        // Vertices around the edge
+        for i in 0..segments {
+            let angle = (i as f32 / segments as f32)* 2.0 * std::f32::consts::PI;
+
+            let x = radius_x * angle.cos();
+            let y = radius_y * angle.sin();
+
+            vertices.extend_from_slice(&[
+                x, y, 0.0
+            ]);
+        }
+
+        // Make triangles from center to neighboring edge vertices
+        for i in 1..segments {
+            indices.extend_from_slice(&[
+                0, i, i + 1,
+            ]);
+        }
+
+        // Connect
+        indices.extend_from_slice(&[
+            0, segments, 1,
+        ]); */
+
+        // spiral
+        let points: u32 = 200;
+
+        /* for i in 0..points {
+            let angle = i as f32 * 0.15;
+            let radius = i as f32 * 0.0025;
+
+            let x = radius * angle.cos();
+            let y = radius * angle.sin();
+
+            vertices.push(x);
+            vertices.push(y);
+            vertices.push(0.0);
+
+            indices.push(i);
+        } */
+
+        // sin
+
+        /* for i in 0..points {
+            let t = i as f32 / (points - 1) as f32;
+
+            let x = -0.9 + t * 1.8;
+            let y = 0.5 * (t * 2.0 * std::f32::consts::PI).sin();
+
+            vertices.push(x);
+            vertices.push(y);
+            vertices.push(0.0);
+
+            indices.push(i);
+        } */
+        
+
+        let my_vao = unsafe {create_vao(&vertices, &indices)};
+
+        let index_count = indices.len() as i32;
+
+
 
 
         // == // Set up your shaders here
@@ -144,13 +308,13 @@ fn main() {
         // This snippet is not enough to do the exercise, and will need to be modified (outside
         // of just using the correct path), but it only needs to be called once
 
-        /*
+        
         let simple_shader = unsafe {
             shader::ShaderBuilder::new()
-                .attach_file("./path/to/simple/shader.file")
+                .attach_file("./shaders/simple.vert")
+                .attach_file("./shaders/simple.frag")
                 .link()
-        };
-        */
+        };        
 
 
         // Used to demonstrate keyboard handling for exercise 2.
@@ -217,7 +381,11 @@ fn main() {
 
 
                 // == // Issue the necessary gl:: commands to draw your scene here
+                simple_shader.activate();
+                gl::BindVertexArray(my_vao);
 
+                gl::DrawElements(gl::TRIANGLES, index_count, gl::UNSIGNED_INT, ptr::null(), );
+                // gl::DrawElements(gl::LINE_STRIP, index_count, gl::UNSIGNED_INT, ptr::null(), );
 
 
             }
