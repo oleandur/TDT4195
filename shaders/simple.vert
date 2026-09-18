@@ -5,7 +5,8 @@ layout(location = 1) in vec4 vertexColor;
 
 layout(location = 0) uniform mat4 transformation;
 
-out vec4 color;
+smooth out vec4 color;
+// noperspective out vec4 color;
 
 void main()
 {

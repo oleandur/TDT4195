@@ -304,7 +304,32 @@ fn main() {
 
         let index_count = indices.len() as i32;
 
+        let demo_vertices: Vec<f32> = vec![
+            // x, y, z
+            -0.4, -0.3,  1.0,  // Close to camera
+            4.0, -3.0, -8.0,  // Far from camera
+            0.0,  4.0, -8.0,  // Far from camera
+        ];
 
+        let demo_indices: Vec<u32> = vec![
+            0, 1, 2
+        ];
+
+        let demo_colors: Vec<f32> = vec![
+            1.0, 0.0, 0.0, 1.0,
+            0.0, 1.0, 0.0, 1.0,
+            0.0, 0.0, 1.0, 1.0,
+        ];
+
+        let interpolation_vao = unsafe {
+            create_vao(
+                &demo_vertices,
+                &demo_indices,
+                &demo_colors,
+            )
+        };
+
+        let interpolation_count = demo_indices.len() as i32;
 
 
         // == // Set up your shaders here
@@ -326,7 +351,10 @@ fn main() {
 
 
         // Used to demonstrate keyboard handling for exercise 2.
-        let mut _arbitrary_number = 0.0; // feel free to remove
+
+        let forward = glm::vec4(0.0, 0.0, -1.0, 0.0);
+        let right   = glm::vec4(1.0, 0.0, 0.0, 0.0);
+        let up      = glm::vec4(0.0, 1.0, 0.0, 0.0);
         
         let mut camera_x: f32 = 0.0;
         let mut camera_y: f32 = 0.0;
@@ -338,7 +366,7 @@ fn main() {
         let movement_speed: f32 = 2.0;
         let rotation_speed: f32 = 1.5;
 
-
+        let show_interpolation_demo: bool = true;
         // The main rendering loop
         let first_frame_time = std::time::Instant::now();
         let mut previous_frame_time = first_frame_time;
@@ -362,29 +390,12 @@ fn main() {
 
             // Handle keyboard input
             if let Ok(keys) = pressed_keys.lock() {
+                // Update camera rotation
                 for key in keys.iter() {
                     match key {
                         // The `VirtualKeyCode` enum is defined here:
                         //    https://docs.rs/winit/0.25.0/winit/event/enum.VirtualKeyCode.html
 
-                        VirtualKeyCode::A => {
-                            camera_x -= movement_speed * delta_time;
-                        }
-                        VirtualKeyCode::D => {
-                            camera_x += movement_speed * delta_time;
-                        }
-                        VirtualKeyCode::W => {
-                            camera_z -= movement_speed * delta_time;
-                        }
-                        VirtualKeyCode::S => {
-                            camera_z += movement_speed * delta_time;
-                        }
-                        VirtualKeyCode::Space => {
-                            camera_y += movement_speed * delta_time;
-                        }
-                        VirtualKeyCode::LShift => {
-                            camera_y -= movement_speed * delta_time;
-                        }
                         VirtualKeyCode::Left => {
                             camera_yaw += rotation_speed * delta_time;
                         }
@@ -397,11 +408,58 @@ fn main() {
                         VirtualKeyCode::Down => {
                             camera_pitch -= rotation_speed * delta_time;
                         }
-
-
                         // default handler:
                         _ => { }
                     }
+                }
+                //Limit rotation vertical
+                let pitch_limit = std::f32::consts::FRAC_PI_2 - 0.01;
+                camera_pitch = camera_pitch.clamp(-pitch_limit, pitch_limit);
+                
+                // Camera rotation matrix
+                let camera_rotation: glm::Mat4 = glm::rotation(camera_yaw, &glm::vec3(0.0, 1.0, 0.0))*glm::rotation(camera_pitch, &glm::vec3(1.0, 0.0, 0.0));
+
+                // Calculate directions relative
+                let forward4 = camera_rotation * glm::vec4(0.0, 0.0, -1.0, 0.0);
+                let right4 = camera_rotation * glm::vec4(1.0, 0.0, 0.0, 0.0);
+                let up4 = camera_rotation * glm::vec4(0.0, 1.0, 0.0, 0.0);
+
+                let forward = glm::vec3(forward4.x, forward4.y, forward4.z);
+                let right = glm::vec3(right4.x, right4.y, right4.z);
+                let up = glm::vec3(up4.x, up4.y, up4.z);
+
+                // Movement relative
+                let mut movement = glm::vec3(0.0, 0.0, 0.0);
+
+                for key in keys.iter() {
+                    match key {
+                        VirtualKeyCode::W => {
+                            movement += forward;
+                        }
+                        VirtualKeyCode::S => {
+                            movement -= forward;
+                        }
+                        VirtualKeyCode::A => {
+                            movement -= right;
+                        }
+                        VirtualKeyCode::D => {
+                            movement += right;
+                        }
+                        VirtualKeyCode::Space => {
+                            movement += up;
+                        }
+                        /* VirtualKeyCode::LShift => {
+                            movement -= up;
+                        } */
+                        _ => {}
+                    } 
+                }
+                // update camera position
+                if movement.norm_squared() > 0.0 {
+                    let movement = movement.normalize() * movement_speed * delta_time;
+                    camera_x += movement.x;
+                    camera_y += movement.y;
+                    camera_z += movement.z;
                 }
             }
             // Handle mouse movement. delta contains the x and y movement of the mouse since last frame in pixels
@@ -435,11 +493,17 @@ fn main() {
                 simple_shader.activate();
 
                 gl::UniformMatrix4fv(0, 1, gl::FALSE, transformation.as_ptr());
+                
+                if show_interpolation_demo {
+                    gl::BindVertexArray(interpolation_vao);
+                    gl::DrawElements(gl::TRIANGLES, interpolation_count, gl::UNSIGNED_INT, ptr::null());
+                } else {
+                    gl::BindVertexArray(my_vao);
 
-                gl::BindVertexArray(my_vao);
+                    gl::DrawElements(gl::TRIANGLES, index_count, gl::UNSIGNED_INT, ptr::null(), );
+                    // gl::DrawElements(gl::LINE_STRIP, index_count, gl::UNSIGNED_INT, ptr::null(), );
 
-                gl::DrawElements(gl::TRIANGLES, index_count, gl::UNSIGNED_INT, ptr::null(), );
-                // gl::DrawElements(gl::LINE_STRIP, index_count, gl::UNSIGNED_INT, ptr::null(), );
+                }
 
 
             }
