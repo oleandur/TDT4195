@@ -117,6 +117,7 @@ unsafe fn create_mesh_vao(mesh: &mesh::Mesh) -> u32 {
     create_vao(&mesh.vertices, &mesh.indices, &mesh.colors, &mesh.normals)
 }
 
+// A3 task 2b
 fn build_helicopter(vaos: &[(u32, i32)]) -> scene_graph::Node {
     let mut body = SceneNode::from_vao(vaos[0].0, vaos[0].1);
     let mut main_rotor = SceneNode::from_vao(vaos[1].0, vaos[1].1);
@@ -163,6 +164,23 @@ unsafe fn draw_scene(
     for &child in &node.children {
         draw_scene(&*child, view_projection_matrix, &model_matrix);
     }
+}
+
+// A3 task 4
+fn animate_helicopter(helicopter: &mut SceneNode, time: f32) {
+    const ROTOR_SPEED: f32 = 20.0;
+    const FLIGHT_HEIGHT: f32 = 10.0;
+
+    helicopter[0].rotation.y = time * ROTOR_SPEED;
+    helicopter[1].rotation.x = time * ROTOR_SPEED;
+
+    let heading = toolbox::simple_heading_animation(time);
+    helicopter.position.x = heading.x;
+    helicopter.position.y = FLIGHT_HEIGHT;
+    helicopter.position.z = heading.z;
+    helicopter.rotation.x = heading.pitch;
+    helicopter.rotation.y = heading.yaw;
+    helicopter.rotation.z = heading.roll;
 }
 
 fn main() {
@@ -238,7 +256,7 @@ fn main() {
 
         let mut scene_root = SceneNode::new();
         let mut terrain_node = SceneNode::from_vao(terrain_vao, terrain_mesh.index_count);
-        let helicopter_root = build_helicopter(&helicopter_vaos);
+        let mut helicopter_root = build_helicopter(&helicopter_vaos);
 
         terrain_node.add_child(&helicopter_root);
         scene_root.add_child(&terrain_node);
@@ -278,7 +296,6 @@ fn main() {
         let movement_speed: f32 = 50.0;
         let rotation_speed: f32 = 1.5;
 
-        let show_interpolation_demo: bool = true;
         // The main rendering loop
         let first_frame_time = std::time::Instant::now();
         let mut previous_frame_time = first_frame_time;
@@ -395,6 +412,8 @@ fn main() {
 
             let transformation: glm::Mat4 = projection * pitch_rotation *yaw_rotation * camera_translation;
 
+            animate_helicopter(&mut helicopter_root, elapsed);
+
             unsafe {
                 // Clear the color and depth buffers
                 gl::ClearColor(0.035, 0.046, 0.078, 1.0); // night sky
@@ -405,10 +424,7 @@ fn main() {
                 simple_shader.activate();
 
                 let identity: glm::Mat4 = glm::identity();
-                draw_scene(&scene_root, &transformation, &identity)
-               
-                // gl::DrawElements(gl::LINE_STRIP, index_count, gl::UNSIGNED_INT, ptr::null(), );
-
+                draw_scene(&scene_root, &transformation, &identity);
 
             }
 
