@@ -216,7 +216,7 @@ fn main() {
         let mut camera_yaw: f32 = 0.0;
         let mut camera_pitch: f32 = 0.0;
 
-        let movement_speed: f32 = 2.0;
+        let movement_speed: f32 = 200.0;
         let rotation_speed: f32 = 1.5;
 
         let show_interpolation_demo: bool = true;

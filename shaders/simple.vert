@@ -16,7 +16,7 @@ void main()
 
     gl_Position = transformation * vertexPosition;
 
-    // color = vertexColor;
+    color = vertexColor;
 
     vertexNormal = normal;
 }
