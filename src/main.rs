@@ -119,9 +119,11 @@ unsafe fn create_mesh_vao(mesh: &mesh::Mesh) -> u32 {
 
 fn build_helicopter(vaos: &[(u32, i32)]) -> scene_graph::Node {
     let mut body = SceneNode::from_vao(vaos[0].0, vaos[0].1);
-    let main_rotor = SceneNode::from_vao(vaos[1].0, vaos[1].1);
-    let tail_rotor = SceneNode::from_vao(vaos[2].0, vaos[2].1);
-    let door = SceneNode::from_vao(vaos[3].0, vaos[3].1);
+    let mut main_rotor = SceneNode::from_vao(vaos[1].0, vaos[1].1);
+    let mut tail_rotor = SceneNode::from_vao(vaos[2].0, vaos[2].1);
+    let mut door = SceneNode::from_vao(vaos[3].0, vaos[3].1);
+
+    tail_rotor.reference_point = glm::vec3(0.35, 2.3, 10.4);
 
     body.add_child(&main_rotor);
     body.add_child(&tail_rotor);
@@ -130,18 +132,36 @@ fn build_helicopter(vaos: &[(u32, i32)]) -> scene_graph::Node {
 }
 
 unsafe fn draw_scene(
-    node: &SceneNode,
+    node: &scene_graph::SceneNode,
     view_projection_matrix: &glm::Mat4,
-    _transformation_so_far: &glm::Mat4,
+    transformation_so_far: &glm::Mat4,
 ) {
+    let translation = glm::translation(&node.position);
+
+    let translate_to_ref = glm::translation(&node.reference_point);
+
+    let translate_from_ref = glm::translation(&glm::vec3(-node.reference_point.x, -node.reference_point.y, -node.reference_point.z));
+
+    let rotation_x = glm::rotation(node.rotation.x, &glm::vec3(1.0, 0.0, 0.0));
+    let rotation_y = glm::rotation(node.rotation.y, &glm::vec3(0.0, 1.0, 0.0));
+    let rotation_z = glm::rotation(node.rotation.z, &glm::vec3(0.0, 0.0, 1.0));
+
+    let scaling = glm::scaling(&node.scale);
+
+    let local_transform = translation * translate_to_ref * rotation_x * rotation_y * rotation_z * scaling * translate_from_ref;
+
+    let model_matrix = transformation_so_far * local_transform;
+
+
     if node.index_count > 0 {
-        gl::UniformMatrix4fv(0, 1, gl::FALSE, view_projection_matrix.as_ptr());
+        let mvp = view_projection_matrix * model_matrix;
+        gl::UniformMatrix4fv(0, 1, gl::FALSE, mvp.as_ptr());
         gl::BindVertexArray(node.vao_id);
         gl::DrawElements(gl::TRIANGLES, node.index_count, gl::UNSIGNED_INT, ptr::null());
     }
 
     for &child in &node.children {
-        draw_scene(&*child, view_projection_matrix, _transformation_so_far);
+        draw_scene(&*child, view_projection_matrix, &model_matrix);
     }
 }
 
@@ -255,7 +275,7 @@ fn main() {
         let mut camera_yaw: f32 = 0.0;
         let mut camera_pitch: f32 = 0.0;
 
-        let movement_speed: f32 = 200.0;
+        let movement_speed: f32 = 50.0;
         let rotation_speed: f32 = 1.5;
 
         let show_interpolation_demo: bool = true;
