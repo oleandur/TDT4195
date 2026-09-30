@@ -7,5 +7,9 @@ out vec4 fragColor;
 
 void main()
 {
-    fragColor = vec4(vertexNormal, 1.0);
+    vec3 lightDirection = normalize(vec3(0.8, -0.5, 0.6));
+
+    float brightness = max(0.0, dot(normalize(vertexNormal), -lightDirection));
+
+    fragColor = vec4(color.rgb * brightness, color.a);
 }
