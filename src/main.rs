@@ -26,6 +26,10 @@ use glutin::event_loop::ControlFlow;
 const INITIAL_SCREEN_W: u32 = 800;
 const INITIAL_SCREEN_H: u32 = 600;
 
+const HELICOPTER_COUNT: usize = 5;
+const CIRCUIT_PERIOD: f32 = 2.0 * std::f32::consts::PI / 0.8;
+const HELICOPTER_TIME_OFFSET: f32 = CIRCUIT_PERIOD / HELICOPTER_COUNT as f32;
+
 // == // Helper functions to make interacting with OpenGL a little bit prettier. You *WILL* need these! // == //
 
 // Get the size of an arbitrary array of numbers measured in bytes
@@ -256,9 +260,13 @@ fn main() {
 
         let mut scene_root = SceneNode::new();
         let mut terrain_node = SceneNode::from_vao(terrain_vao, terrain_mesh.index_count);
-        let mut helicopter_root = build_helicopter(&helicopter_vaos);
+        let mut helicopters: Vec<scene_graph::NODE> = (0..HELICOPTER_COUNT)
+            .map(|_| build_helicopter(&helicopter_vaos))
+            .collect();
+        for helicopter in &helicopters {
+            terrain_node.add_child(helicopter);
+        }
 
-        terrain_node.add_child(&helicopter_root);
         scene_root.add_child(&terrain_node);
         scene_root.print();
 
@@ -412,7 +420,9 @@ fn main() {
 
             let transformation: glm::Mat4 = projection * pitch_rotation *yaw_rotation * camera_translation;
 
-            animate_helicopter(&mut helicopter_root, elapsed);
+            for (i, helicopter) in helicopters.iter_mut().enumerate() {
+                animate_helicopter(helicopter, elapsed + i as f32 * HELICOPTER_TIME_OFFSET);
+            }
 
             unsafe {
                 // Clear the color and depth buffers
