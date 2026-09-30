@@ -117,6 +117,7 @@ unsafe fn create_mesh_vao(mesh: &mesh::Mesh) -> u32 {
     create_vao(&mesh.vertices, &mesh.indices, &mesh.colors, &mesh.normals)
 }
 
+// A3 task 2b
 fn build_helicopter(vaos: &[(u32, i32)]) -> scene_graph::Node {
     let mut body = SceneNode::from_vao(vaos[0].0, vaos[0].1);
     let main_rotor = SceneNode::from_vao(vaos[1].0, vaos[1].1);
@@ -143,6 +144,23 @@ unsafe fn draw_scene(
     for &child in &node.children {
         draw_scene(&*child, view_projection_matrix, _transformation_so_far);
     }
+}
+
+// A3 task 4
+fn animate_helicopter(helicopter: &mut SceneNode, time: f32) {
+    const ROTOR_SPEED: f32 = 20.0;
+    const FLIGHT_HEIGHT: f32 = 10.0;
+
+    helicopter[0].rotation.y = time * ROTOR_SPEED;
+    helicopter[1].rotation.x = time * ROTOR_SPEED;
+
+    let heading = toolbox::simple_heading_animation(time);
+    helicopter.position.x = heading.x;
+    helicopter.position.y = FLIGHT_HEIGHT;
+    helicopter.position.z = heading.z;
+    helicopter.rotation.x = heading.pitch;
+    helicopter.rotation.y = heading.yaw;
+    helicopter.rotation.z = heading.roll;
 }
 
 fn main() {
@@ -218,7 +236,7 @@ fn main() {
 
         let mut scene_root = SceneNode::new();
         let mut terrain_node = SceneNode::from_vao(terrain_vao, terrain_mesh.index_count);
-        let helicopter_root = build_helicopter(&helicopter_vaos);
+        let mut helicopter_root = build_helicopter(&helicopter_vaos);
 
         terrain_node.add_child(&helicopter_root);
         scene_root.add_child(&terrain_node);
@@ -373,6 +391,8 @@ fn main() {
             let projection: glm::Mat4 = glm::perspective(window_aspect_ratio, 45.0_f32.to_radians(), 1.0, 1000.0);
 
             let transformation: glm::Mat4 = projection * pitch_rotation *yaw_rotation * camera_translation;
+
+            animate_helicopter(&mut helicopter_root, elapsed);
 
             unsafe {
                 // Clear the color and depth buffers
