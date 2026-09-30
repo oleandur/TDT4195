@@ -32,6 +32,11 @@ const HELICOPTER_TIME_OFFSET: f32 = CIRCUIT_PERIOD / HELICOPTER_COUNT as f32;
 const DOOR_SPEED: f32 = 2.0;
 const DOOR_MAX_OFFSET: f32 = 2.0;
 const CHASE_RADIUS: f32 = 30.0;
+const MANUAL_SPEED: f32 = 40.0;
+const MANUAL_TURN_SPEED: f32 = 1.5;
+const MANUAL_CLIMB_SPEED: f32 = 15.0;
+const MAX_TILT: f32 = 0.3;
+const TILT_SMOOTHING: f32 = 5.0;
 
 // == // Helper functions to make interacting with OpenGL a little bit prettier. You *WILL* need these! // == //
 
@@ -175,13 +180,17 @@ unsafe fn draw_scene(
 }
 
 // A3 task 4
-fn animate_helicopter(helicopter: &mut SceneNode, time: f32, door_offset: f32) {
+fn animate_helicopter(helicopter: &mut SceneNode, time: f32, door_offset: f32, follow_path: bool) {
     const ROTOR_SPEED: f32 = 20.0;
     const FLIGHT_HEIGHT: f32 = 10.0;
 
     helicopter[0].rotation.y = time * ROTOR_SPEED;
     helicopter[1].rotation.x = time * ROTOR_SPEED;
     helicopter[2].position.z = door_offset;
+
+    if!follow_path {
+        return;
+    }
 
     let heading = toolbox::simple_heading_animation(time);
     helicopter.position.x = heading.x;
@@ -325,6 +334,13 @@ fn main() {
         let mut chase_key_was_down = false;
         let mut chase_camera_pos = glm::vec3(0.0, 0.0, 0.0);
 
+        let mut manual_mode = false;
+        let mut manual_key_was_down = false;
+        let mut manual_pos = glm::vec3(0.0, 0.0, 0.0);
+        let mut manual_pitch: f32 = 0.0;
+        let mut manual_yaw: f32 = 0.0;
+        let mut manual_roll: f32 = 0.0;
+
         // The main rendering loop
         let first_frame_time = std::time::Instant::now();
         let mut previous_frame_time = first_frame_time;
@@ -419,7 +435,7 @@ fn main() {
                     camera_y += movement.y;
                     camera_z += movement.z;
                 }
-                // open / close helicopter doors (time-based)
+                // open / close helicopter doors
                 for key in keys.iter() {
                     match key {
                         VirtualKeyCode::O => door_offset += DOOR_SPEED * delta_time,
@@ -437,6 +453,44 @@ fn main() {
                     }
                 }
                 chase_key_was_down = chase_key_down;
+                // manual helicopter control (helicopter 0)
+                let manual_key_down = keys.contains(&VirtualKeyCode::H);
+                if manual_key_down && !manual_key_was_down {
+                    manual_mode = !manual_mode;
+                    if manual_mode {
+                        manual_pos = helicopters[0].position;
+                        manual_pitch = helicopters[0].rotation.x;
+                        manual_yaw = helicopters[0].rotation.y;
+                        manual_roll = helicopters[0].rotation.z;
+                    }
+                }
+                manual_key_was_down = manual_key_down;
+
+                if manual_mode {
+                    let mut forward_input = 0.0_f32;
+                    let mut turn_input = 0.0_f32;
+                    let mut climb_input = 0.0_f32;
+                    for key in keys-iter() {
+                        match key {
+                            VirtualKeyCode::I => forward_input += 1.0,
+                            VirtualKeyCode::K => forward_input -= 1.0,
+                            VirtualKeyCode::J => turn_input += 1.0,
+                            VirtualKeyCode::L => turn_input -= 1.0,
+                            VirtualKeyCode::R => climb_input += 1.0,
+                            VirtualKeyCode::F => climb_input -= 1.0,
+                            _ => {}
+                        }
+                    }
+                    manual_yaw += turn_input * MANUAL_TURN_SPEED * delta_time;
+
+                    let heli_forward = glm::vec3(-manual_yaw.sin(), 0.0, -manual_yaw.cos());
+                    manual_pos += heli_forward * forward_input * MANUAL_SPEED * delta_time;
+                    manual_pos.y += climb_input * MANUAL_CLIMB_SPEED * delta_time;
+
+                    let blend = (TILT_SMOOTHING * delta_time).min(1.0);
+                    manual_pitch += (-MAX_TILT * forward_input - manual_pitch) * blend;
+                    manual_roll += (MAX_TILT * turn_input - manual_roll) * blend;
+                }
             }
             // Handle mouse movement. delta contains the x and y movement of the mouse since last frame in pixels
             if let Ok(mut delta) = mouse_delta.lock() {
@@ -448,7 +502,13 @@ fn main() {
             }
 
             for (i, helicopter) in helicopters.iter_mut().enumerate() {
-                animate_helicopter(helicopter, elapsed + i as f32 * HELICOPTER_TIME_OFFSET, door_offset);
+                let follow_path = !(manual_mode && i == 0);
+                animate_helicopter(helicopter, elapsed + i as f32 * HELICOPTER_TIME_OFFSET, door_offset, follow_path);
+            }
+
+            if manual_mode {
+                helicopters[0].position = manual_pos;
+                helicopters[0].rotation = glm::vec3(manual_pitch, manual_yaw, manual_roll);
             }
 
             // == // Please compute camera transforms here (exercise 2 & 3)
