@@ -14,6 +14,9 @@ use std::sync::{Mutex, Arc, RwLock};
 
 mod shader;
 mod util;
+mod mesh;
+mod scene_graph;
+mod toolbox;
 
 use glutin::event::{Event, WindowEvent, DeviceEvent, KeyboardInput, ElementState::{Pressed, Released}, VirtualKeyCode::{self, *}};
 use glutin::event_loop::ControlFlow;
@@ -53,10 +56,7 @@ fn offset<T>(n: u32) -> *const c_void {
 
 
 // == // Generate your VAO here
-unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, color: &Vec<f32>) -> u32 {
-    // Implement me!
-
-    // Also, feel free to delete comments :)
+unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, color: &Vec<f32>, normals: &Vec<f32>) -> u32 {
 
     // This should:
     // * Generate a VAO and bind it
@@ -77,6 +77,7 @@ unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, color: &Vec<f32>) 
 
     gl::EnableVertexAttribArray(0);
 
+    // Colors
     let mut color_vbo_id: u32 = 0;
     gl::GenBuffers(1, &mut color_vbo_id);
     gl::BindBuffer(gl::ARRAY_BUFFER, color_vbo_id);
@@ -86,6 +87,17 @@ unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, color: &Vec<f32>) 
     gl::VertexAttribPointer(1, 4, gl::FLOAT, gl::FALSE, 0, ptr::null());
 
     gl::EnableVertexAttribArray(1);
+
+    // Normals
+
+    let mut normal_vbo_id: u32 = 0;
+    gl::GenBuffers(1, &mut normal_vbo_id);
+    gl::BindBuffer(gl::ARRAY_BUFFER, normal_vbo_id);
+
+    gl::BufferData(gl::ARRAY_BUFFER, byte_size_of_array(normals), pointer_to_array(normals), gl::STATIC_DRAW);
+    gl::VertexAttribPointer(2, 3, gl::FLOAT, gl::FALSE, 0, ptr::null());
+
+    gl::EnableVertexAttribArray(2);
 
 
     // * Generate a IBO and bind it
@@ -162,174 +174,15 @@ fn main() {
 
         // == // Set up your VAO around here
 
-        // 5 triangles
-        let vertices: Vec<f32> = vec![
-            // Triangle 1
-            -0.15,  0.5, -0.4,
-            -0.65, -0.4, -0.4,
-             0.35, -0.4, -0.4,
+        let terrain = mesh::Terrain::load("./resources/lunarsurface.obj");
 
-            // Triangle 2
-             0.0,   0.5, 0.0,
-            -0.5,  -0.4, 0.0,
-             0.5,  -0.4, 0.0,
-
-            // Triangle 3
-             0.15,  0.5, 0.4,
-            -0.35, -0.4, 0.4,
-             0.65, -0.4, 0.4,
-            
-
-            // Triangle 4
-            /* 0.0, -0.75, 0.0,
-            0.175, -0.25, 0.0,
-            -0.175, -0.25, 0.0,
-            
-
-            // Triangle 5
-            0.725, -0.75, 0.0,
-            0.90, -0.25, 0.0,
-            0.55, -0.25, 0.0,
-             */
-        ];
-        let indices: Vec<u32> = vec![
-            0, 1, 2, 
-            3, 4, 5,
-            6, 7, 8,
-            /* 9, 10, 11,
-            12, 13, 14, */
-        ];
-
-        let colors: Vec<f32> = vec![
-            // r,  g,   b,   a
-            1.0, 0.0, 0.0, 0.7,
-            1.0, 0.0, 0.0, 0.7,
-            1.0, 0.0, 0.0, 0.7,
-
-            0.0, 1.0, 0.0, 0.4,
-            0.0, 1.0, 0.0, 0.4,
-            0.0, 1.0, 0.0, 0.4,
-
-            0.0, 0.0, 1.0, 0.4,
-            0.0, 0.0, 1.0, 0.4,
-            0.0, 0.0, 1.0, 0.4,
-        ];
-        
-        // Checkerboard
-        /* let vertices: Vec<f32> = vec![
-            5.0, -5.0, -5.0,
-            0.0, 5.0, 0.0,
-            -5.0, -5.0, 5.0,
-        ]; 
-
-        let indices: Vec<u32> = vec![
-            0, 1, 2
-        ];
-         */
-         
-        // Circle
-        /* let segments: u32 = 64;
-        let radius: f32 = 0.6;
-
-        let radius_x = radius / window_aspect_ratio;
-        let radius_y = radius;
-
-        let mut vertices: Vec<f32> = Vec::new();
-        let mut indices: Vec<u32> = Vec::new();
-        
-        
-        // Center vertex
-        vertices.extend_from_slice(&[
-            0.0, 0.0, 0.0
-        ]);
-
-        // Vertices around the edge
-        for i in 0..segments {
-            let angle = (i as f32 / segments as f32)* 2.0 * std::f32::consts::PI;
-
-            let x = radius_x * angle.cos();
-            let y = radius_y * angle.sin();
-
-            vertices.extend_from_slice(&[
-                x, y, 0.0
-            ]);
-        }
-
-        // Make triangles from center to neighboring edge vertices
-        for i in 1..segments {
-            indices.extend_from_slice(&[
-                0, i, i + 1,
-            ]);
-        }
-
-        // Connect
-        indices.extend_from_slice(&[
-            0, segments, 1,
-        ]); */
-
-        // spiral
-        let points: u32 = 200;
-
-        /* for i in 0..points {
-            let angle = i as f32 * 0.15;
-            let radius = i as f32 * 0.0025;
-
-            let x = radius * angle.cos();
-            let y = radius * angle.sin();
-
-            vertices.push(x);
-            vertices.push(y);
-            vertices.push(0.0);
-
-            indices.push(i);
-        } */
-
-        // sin
-
-        /* for i in 0..points {
-            let t = i as f32 / (points - 1) as f32;
-
-            let x = -0.9 + t * 1.8;
-            let y = 0.5 * (t * 2.0 * std::f32::consts::PI).sin();
-
-            vertices.push(x);
-            vertices.push(y);
-            vertices.push(0.0);
-
-            indices.push(i);
-        } */
+        let terrain_vao = unsafe {create_vao(&terrain.vertices, &terrain.indices, &terrain.colors, &terrain.normals)};
         
 
-        let my_vao = unsafe {create_vao(&vertices, &indices, &colors)};
+        /* let my_vao = unsafe {create_vao(&vertices, &indices, &colors)};
 
-        let index_count = indices.len() as i32;
+        let index_count = indices.len() as i32; */
 
-        let demo_vertices: Vec<f32> = vec![
-            // x, y, z
-            -0.4, -0.3,  1.0,  // Close to camera
-            4.0, -3.0, -8.0,  // Far from camera
-            0.0,  4.0, -8.0,  // Far from camera
-        ];
-
-        let demo_indices: Vec<u32> = vec![
-            0, 1, 2
-        ];
-
-        let demo_colors: Vec<f32> = vec![
-            1.0, 0.0, 0.0, 1.0,
-            0.0, 1.0, 0.0, 1.0,
-            0.0, 0.0, 1.0, 1.0,
-        ];
-
-        let interpolation_vao = unsafe {
-            create_vao(
-                &demo_vertices,
-                &demo_indices,
-                &demo_colors,
-            )
-        };
-
-        let interpolation_count = demo_indices.len() as i32;
 
 
         // == // Set up your shaders here
@@ -479,7 +332,7 @@ fn main() {
 
             let pitch_rotation: glm::Mat4 = glm::rotation(-camera_pitch, &glm::vec3(1.0, 0.0, 0.0));
 
-            let projection: glm::Mat4 = glm::perspective(window_aspect_ratio, 45.0_f32.to_radians(), 1.0, 100.0);
+            let projection: glm::Mat4 = glm::perspective(window_aspect_ratio, 45.0_f32.to_radians(), 1.0, 1000.0);
 
             let transformation: glm::Mat4 = projection * pitch_rotation *yaw_rotation * camera_translation;
 
@@ -494,16 +347,11 @@ fn main() {
 
                 gl::UniformMatrix4fv(0, 1, gl::FALSE, transformation.as_ptr());
                 
-                if show_interpolation_demo {
-                    gl::BindVertexArray(interpolation_vao);
-                    gl::DrawElements(gl::TRIANGLES, interpolation_count, gl::UNSIGNED_INT, ptr::null());
-                } else {
-                    gl::BindVertexArray(my_vao);
-
-                    gl::DrawElements(gl::TRIANGLES, index_count, gl::UNSIGNED_INT, ptr::null(), );
-                    // gl::DrawElements(gl::LINE_STRIP, index_count, gl::UNSIGNED_INT, ptr::null(), );
-
-                }
+               
+                gl::BindVertexArray(terrain_vao);
+                gl::DrawElements(gl::TRIANGLES, terrain.index_count, gl::UNSIGNED_INT, ptr::null());
+               
+                // gl::DrawElements(gl::LINE_STRIP, index_count, gl::UNSIGNED_INT, ptr::null(), );
 
 
             }
