@@ -26,12 +26,19 @@ use glutin::event_loop::ControlFlow;
 const INITIAL_SCREEN_W: u32 = 800;
 const INITIAL_SCREEN_H: u32 = 600;
 
+// A3 task 6
 const HELICOPTER_COUNT: usize = 5;
 const CIRCUIT_PERIOD: f32 = 2.0 * std::f32::consts::PI / 0.8;
 const HELICOPTER_TIME_OFFSET: f32 = CIRCUIT_PERIOD / HELICOPTER_COUNT as f32;
+
+// A3 task 7d
 const DOOR_SPEED: f32 = 2.0;
 const DOOR_MAX_OFFSET: f32 = 2.0;
+
+// A3 task 7c
 const CHASE_RADIUS: f32 = 30.0;
+
+// A3 task 7b
 const MANUAL_SPEED: f32 = 40.0;
 const MANUAL_TURN_SPEED: f32 = 1.5;
 const MANUAL_CLIMB_SPEED: f32 = 15.0;
@@ -63,10 +70,6 @@ fn size_of<T>() -> i32 {
 fn offset<T>(n: u32) -> *const c_void {
     (n * mem::size_of::<T>() as u32) as *const T as *const c_void
 }
-
-// Get a null pointer (equivalent to an offset of 0)
-// ptr::null()
-
 
 // == // Generate your VAO here
 unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, color: &Vec<f32>, normals: &Vec<f32>) -> u32 {
@@ -101,7 +104,7 @@ unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, color: &Vec<f32>, 
 
     gl::EnableVertexAttribArray(1);
 
-    // Normals
+    // Normals (A3 task 1)
 
     let mut normal_vbo_id: u32 = 0;
     gl::GenBuffers(1, &mut normal_vbo_id);
@@ -125,6 +128,7 @@ unsafe fn create_vao(vertices: &Vec<f32>, indices: &Vec<u32>, color: &Vec<f32>, 
     vao_id
 }
 
+// A3 task 2a
 unsafe fn create_mesh_vao(mesh: &mesh::Mesh) -> u32 {
     create_vao(&mesh.vertices, &mesh.indices, &mesh.colors, &mesh.normals)
 }
@@ -201,6 +205,7 @@ fn animate_helicopter(helicopter: &mut SceneNode, time: f32, door_offset: f32, f
     helicopter.rotation.z = heading.roll;
 }
 
+// A3 task 7c
 fn chase_target(camera_pos: &glm::Vec3, target: &glm::Vec3, radius: f32) -> glm::Vec3 {
     let to_target = target - camera_pos;
     let distance = glm::length(&to_target);
@@ -221,9 +226,6 @@ fn main() {
     let cb = glutin::ContextBuilder::new()
         .with_vsync(true);
     let windowed_context = cb.build_windowed(wb, &el).unwrap();
-    // Uncomment these if you want to use the mouse for controls, but want it to be confined to the screen and/or invisible.
-    // windowed_context.window().set_cursor_grab(true).expect("failed to grab cursor");
-    // windowed_context.window().set_cursor_visible(false);
 
     // Set up a shared vector for keeping track of currently pressed keys
     let arc_pressed_keys = Arc::new(Mutex::new(Vec::<VirtualKeyCode>::with_capacity(10)));
@@ -293,16 +295,6 @@ fn main() {
 
         scene_root.add_child(&terrain_node);
         scene_root.print();
-
-        // == // Set up your shaders here
-
-        // Basic usage of shader helper:
-        // The example code below creates a 'shader' object.
-        // It which contains the field `.program_id` and the method `.activate()`.
-        // The `.` in the path is relative to `Cargo.toml`.
-        // This snippet is not enough to do the exercise, and will need to be modified (outside
-        // of just using the correct path), but it only needs to be called once
-
         
         let simple_shader = unsafe {
             shader::ShaderBuilder::new()
@@ -310,9 +302,6 @@ fn main() {
                 .attach_file("./shaders/simple.frag")
                 .link()
         };        
-
-
-        // Used to demonstrate keyboard handling for exercise 2.
 
         let forward = glm::vec4(0.0, 0.0, -1.0, 0.0);
         let right   = glm::vec4(1.0, 0.0, 0.0, 0.0);
@@ -328,12 +317,15 @@ fn main() {
         let movement_speed: f32 = 50.0;
         let rotation_speed: f32 = 1.5;
 
+        // A3 task 7d
         let mut door_offset: f32 = 0.0;
 
+        // A3 task 7c
         let mut chase_mode = false;
         let mut chase_key_was_down = false;
         let mut chase_camera_pos = glm::vec3(0.0, 0.0, 0.0);
 
+        // A3 task 7b
         let mut manual_mode = false;
         let mut manual_key_was_down = false;
         let mut manual_pos = glm::vec3(0.0, 0.0, 0.0);
@@ -364,12 +356,8 @@ fn main() {
 
             // Handle keyboard input
             if let Ok(keys) = pressed_keys.lock() {
-                // Update camera rotation
                 for key in keys.iter() {
                     match key {
-                        // The `VirtualKeyCode` enum is defined here:
-                        //    https://docs.rs/winit/0.25.0/winit/event/enum.VirtualKeyCode.html
-
                         VirtualKeyCode::Left => {
                             camera_yaw += rotation_speed * delta_time;
                         }
@@ -382,7 +370,6 @@ fn main() {
                         VirtualKeyCode::Down => {
                             camera_pitch -= rotation_speed * delta_time;
                         }
-                        // default handler:
                         _ => { }
                     }
                 }
@@ -422,9 +409,6 @@ fn main() {
                         VirtualKeyCode::Space => {
                             movement += up;
                         }
-                        /* VirtualKeyCode::LShift => {
-                            movement -= up;
-                        } */
                         _ => {}
                     } 
                 }
@@ -435,7 +419,7 @@ fn main() {
                     camera_y += movement.y;
                     camera_z += movement.z;
                 }
-                // open / close helicopter doors
+                // open / close helicopter doors (A3 task 7d)
                 for key in keys.iter() {
                     match key {
                         VirtualKeyCode::O => door_offset += DOOR_SPEED * delta_time,
@@ -444,7 +428,7 @@ fn main() {
                     }
                 }
                 door_offset = door_offset.clamp(0.0, DOOR_MAX_OFFSET);
-                // chase camera
+                // chase camera (A3 task 7c)
                 let chase_key_down = keys.contains(&VirtualKeyCode::V);
                 if chase_key_down && !chase_key_was_down {
                     chase_mode = !chase_mode;
@@ -453,7 +437,7 @@ fn main() {
                     }
                 }
                 chase_key_was_down = chase_key_down;
-                // manual helicopter control (helicopter 0)
+                // manual helicopter control (helicopter 0) (A3 task 7b)
                 let manual_key_down = keys.contains(&VirtualKeyCode::H);
                 if manual_key_down && !manual_key_was_down {
                     manual_mode = !manual_mode;
@@ -483,10 +467,12 @@ fn main() {
                     }
                     manual_yaw += turn_input * MANUAL_TURN_SPEED * delta_time;
 
+                    // The nose points along -z in model space, so "forward" rotates with yaw
                     let heli_forward = glm::vec3(-manual_yaw.sin(), 0.0, -manual_yaw.cos());
                     manual_pos += heli_forward * forward_input * MANUAL_SPEED * delta_time;
                     manual_pos.y += climb_input * MANUAL_CLIMB_SPEED * delta_time;
 
+                    // Lean forward when flying forward and bank when turning.
                     let blend = (TILT_SMOOTHING * delta_time).min(1.0);
                     manual_pitch += (-MAX_TILT * forward_input - manual_pitch) * blend;
                     manual_roll += (MAX_TILT * turn_input - manual_roll) * blend;
@@ -494,10 +480,6 @@ fn main() {
             }
             // Handle mouse movement. delta contains the x and y movement of the mouse since last frame in pixels
             if let Ok(mut delta) = mouse_delta.lock() {
-
-                // == // Optionally access the accumulated mouse movement between
-                // == // frames here with `delta.0` and `delta.1`
-
                 *delta = (0.0, 0.0); // reset when done
             }
 
@@ -511,16 +493,12 @@ fn main() {
                 helicopters[0].rotation = glm::vec3(manual_pitch, manual_yaw, manual_roll);
             }
 
-            // == // Please compute camera transforms here (exercise 2 & 3)
-
             let camera_translation: glm::Mat4 = glm::translation(&glm::vec3(-camera_x, -camera_y, -camera_z));
-
             let yaw_rotation: glm::Mat4 = glm::rotation(-camera_yaw, &glm::vec3(0.0, 1.0, 0.0));
-
             let pitch_rotation: glm::Mat4 = glm::rotation(-camera_pitch, &glm::vec3(1.0, 0.0, 0.0));
-
             let projection: glm::Mat4 = glm::perspective(window_aspect_ratio, 45.0_f32.to_radians(), 1.0, 1000.0);
 
+            // A3 task 7c
             let view: glm::Mat4 = if chase_mode {
                 let target = helicopters[0].position;
                 chase_camera_pos = chase_target(&chase_camera_pos, &target, CHASE_RADIUS);
@@ -536,11 +514,16 @@ fn main() {
                 gl::ClearColor(0.035, 0.046, 0.078, 1.0); // night sky
                 gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
 
-
-                // == // Issue the necessary gl:: commands to draw your scene here
                 simple_shader.activate();
 
-                gl::Uniform3f(2, camera_x, camera_y, camera_z);
+                // gl::Uniform3f(2, camera_x, camera_y, camera_z);
+                // A3 task 7a
+                let eye = if chase_mode {
+                    chase_camera_pos
+                } else {
+                    glm::vec3(camera_x, camera_y, camera_z)
+                };
+                gl::Uniform3f(2, eye.x, eye.y, eye.z)
 
                 let identity: glm::Mat4 = glm::identity();
                 draw_scene(&scene_root, &transformation, &identity);
