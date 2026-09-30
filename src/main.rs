@@ -480,6 +480,8 @@ fn main() {
                 // == // Issue the necessary gl:: commands to draw your scene here
                 simple_shader.activate();
 
+                gl::Uniform3f(2, camera_x, camera_y, camera_z);
+
                 let identity: glm::Mat4 = glm::identity();
                 draw_scene(&scene_root, &transformation, &identity);
 
