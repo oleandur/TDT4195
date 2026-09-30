@@ -29,6 +29,9 @@ const INITIAL_SCREEN_H: u32 = 600;
 const HELICOPTER_COUNT: usize = 5;
 const CIRCUIT_PERIOD: f32 = 2.0 * std::f32::consts::PI / 0.8;
 const HELICOPTER_TIME_OFFSET: f32 = CIRCUIT_PERIOD / HELICOPTER_COUNT as f32;
+const DOOR_SPEED: f32 = 2.0;
+const DOOR_MAX_OFFSET: f32 = 2.0;
+const CHASE_RADIUS: f32 = 30.0;
 
 // == // Helper functions to make interacting with OpenGL a little bit prettier. You *WILL* need these! // == //
 
@@ -171,12 +174,13 @@ unsafe fn draw_scene(
 }
 
 // A3 task 4
-fn animate_helicopter(helicopter: &mut SceneNode, time: f32) {
+fn animate_helicopter(helicopter: &mut SceneNode, time: f32, door_offset: f32) {
     const ROTOR_SPEED: f32 = 20.0;
     const FLIGHT_HEIGHT: f32 = 10.0;
 
     helicopter[0].rotation.y = time * ROTOR_SPEED;
     helicopter[1].rotation.x = time * ROTOR_SPEED;
+    helicopter[2].position.z = door_offset;
 
     let heading = toolbox::simple_heading_animation(time);
     helicopter.position.x = heading.x;
@@ -185,6 +189,16 @@ fn animate_helicopter(helicopter: &mut SceneNode, time: f32) {
     helicopter.rotation.x = heading.pitch;
     helicopter.rotation.y = heading.yaw;
     helicopter.rotation.z = heading.roll;
+}
+
+fn chase_target(camera_pos: &glm::Vec3, target: &glm::Vec3, radius: f32) -> glm::Vec3 {
+    let to_target = target - camera_pos;
+    let distance = glm::length(&to_target);
+    if distance > radius {
+        camera_pos + to_target/distance * (distance - radius)
+    } else {
+        *camera_pos
+    }
 }
 
 fn main() {
@@ -260,7 +274,7 @@ fn main() {
 
         let mut scene_root = SceneNode::new();
         let mut terrain_node = SceneNode::from_vao(terrain_vao, terrain_mesh.index_count);
-        let mut helicopters: Vec<scene_graph::NODE> = (0..HELICOPTER_COUNT)
+        let mut helicopters: Vec<scene_graph::Node> = (0..HELICOPTER_COUNT)
             .map(|_| build_helicopter(&helicopter_vaos))
             .collect();
         for helicopter in &helicopters {
@@ -303,6 +317,12 @@ fn main() {
 
         let movement_speed: f32 = 50.0;
         let rotation_speed: f32 = 1.5;
+
+        let mut door_offset: f32 = 0.0;
+
+        let mut chase_mode = false;
+        let mut chase_key_was_down = false;
+        let mut chase_camera_pos = glm::vec3(0.0, 0.0, 0.0);
 
         // The main rendering loop
         let first_frame_time = std::time::Instant::now();
@@ -398,6 +418,24 @@ fn main() {
                     camera_y += movement.y;
                     camera_z += movement.z;
                 }
+                // open / close helicopter doors (time-based)
+                for key in keys.iter() {
+                    match key {
+                        VirtualKeyCode::O => door_offset += DOOR_SPEED * delta_time,
+                        VirtualKeyCode::C => door_offset -= DOOR_SPEED * delta_time,
+                        _ => {}
+                    }
+                }
+                door_offset = door_offset.clamp(0.0, DOOR_MAX_OFFSET);
+                // chase camera
+                let chase_key_down = keys.contains(&VirtualKeyCode::V);
+                if chase_key_down && !chase_key_was_down {
+                    chase_mode = !chase_mode;
+                    if chase_mode {
+                        chase_camera_pos = glm::vec3(camera_x, camera_y, camera_z);
+                    }
+                }
+                chase_key_was_down = chase_key_down;
             }
             // Handle mouse movement. delta contains the x and y movement of the mouse since last frame in pixels
             if let Ok(mut delta) = mouse_delta.lock() {
@@ -406,6 +444,10 @@ fn main() {
                 // == // frames here with `delta.0` and `delta.1`
 
                 *delta = (0.0, 0.0); // reset when done
+            }
+
+            for (i, helicopter) in helicopters.iter_mut().enumerate() {
+                animate_helicopter(helicopter, elapsed + i as f32 * HELICOPTER_TIME_OFFSET, door_offset);
             }
 
             // == // Please compute camera transforms here (exercise 2 & 3)
@@ -418,11 +460,15 @@ fn main() {
 
             let projection: glm::Mat4 = glm::perspective(window_aspect_ratio, 45.0_f32.to_radians(), 1.0, 1000.0);
 
-            let transformation: glm::Mat4 = projection * pitch_rotation *yaw_rotation * camera_translation;
+            let view: glm::Mat4 = if chase_mode {
+                let target = helicopters[0].position;
+                chase_camera_pos = chase_target(&chase_camera_pos, &target, CHASE_RADIUS);
+                glm::look_at(&chase_camera_pos, &target, &glm::vec3(0.0, 1.0, 0.0))
+            } else {
+                pitch_rotation * yaw_rotation * camera_translation
+            };
 
-            for (i, helicopter) in helicopters.iter_mut().enumerate() {
-                animate_helicopter(helicopter, elapsed + i as f32 * HELICOPTER_TIME_OFFSET);
-            }
+            let transformation: glm::Mat4 = projection * view;
 
             unsafe {
                 // Clear the color and depth buffers
