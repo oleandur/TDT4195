@@ -470,7 +470,7 @@ fn main() {
                     let mut forward_input = 0.0_f32;
                     let mut turn_input = 0.0_f32;
                     let mut climb_input = 0.0_f32;
-                    for key in keys-iter() {
+                    for key in keys.iter() {
                         match key {
                             VirtualKeyCode::I => forward_input += 1.0,
                             VirtualKeyCode::K => forward_input -= 1.0,
