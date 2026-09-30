@@ -6,6 +6,8 @@ layout(location = 2) in vec3 normal;
 
 layout(location = 0) uniform mat4 transformation;
 
+layout(location = 1) uniform mat4 modelMatrix;
+
 smooth out vec4 color;
 smooth out vec3 vertexNormal;
 
@@ -18,5 +20,5 @@ void main()
 
     color = vertexColor;
 
-    vertexNormal = normal;
+    vertexNormal = normalize(mat3(modelMatrix) * normal);
 }

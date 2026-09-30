@@ -152,11 +152,12 @@ unsafe fn draw_scene(
     let local_transform = translation * translate_to_ref * rotation_x * rotation_y * rotation_z * scaling * translate_from_ref;
 
     let model_matrix = transformation_so_far * local_transform;
-
+    let mvp = view_projection_matrix * model_matrix;
 
     if node.index_count > 0 {
-        let mvp = view_projection_matrix * model_matrix;
         gl::UniformMatrix4fv(0, 1, gl::FALSE, mvp.as_ptr());
+        gl::UniformMatrix4fv(1, 1, gl::FALSE, model_matrix.as_ptr());
+
         gl::BindVertexArray(node.vao_id);
         gl::DrawElements(gl::TRIANGLES, node.index_count, gl::UNSIGNED_INT, ptr::null());
     }
