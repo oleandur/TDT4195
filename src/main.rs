@@ -258,7 +258,6 @@ fn main() {
         let movement_speed: f32 = 2.0;
         let rotation_speed: f32 = 1.5;
 
-        let show_interpolation_demo: bool = true;
         // The main rendering loop
         let first_frame_time = std::time::Instant::now();
         let mut previous_frame_time = first_frame_time;
@@ -385,10 +384,7 @@ fn main() {
                 simple_shader.activate();
 
                 let identity: glm::Mat4 = glm::identity();
-                draw_scene(&scene_root, &transformation, &identity)
-               
-                // gl::DrawElements(gl::LINE_STRIP, index_count, gl::UNSIGNED_INT, ptr::null(), );
-
+                draw_scene(&scene_root, &transformation, &identity);
 
             }
 
