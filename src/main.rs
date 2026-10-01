@@ -523,7 +523,7 @@ fn main() {
                 } else {
                     glm::vec3(camera_x, camera_y, camera_z)
                 };
-                gl::Uniform3f(2, eye.x, eye.y, eye.z)
+                gl::Uniform3f(2, eye.x, eye.y, eye.z);
 
                 let identity: glm::Mat4 = glm::identity();
                 draw_scene(&scene_root, &transformation, &identity);
